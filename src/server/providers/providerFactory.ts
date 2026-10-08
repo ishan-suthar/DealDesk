@@ -2,6 +2,9 @@ import type { ResearchProvider } from './types';
 import { demoProvider } from './demo/demoProvider';
 import { failingTestProvider, FailingMode, FailingTestProvider } from './test/failingTestProvider';
 
+import { AnthropicAdapter } from './anthropic/anthropicAdapter';
+import { GeminiAdapter } from './gemini/geminiAdapter';
+
 export function getProvider(overrideId?: string, failureMode?: FailingMode): ResearchProvider {
   const providerId = overrideId || process.env.RESEARCH_PROVIDER || 'demo';
 
@@ -14,8 +17,7 @@ export function getProvider(overrideId?: string, failureMode?: FailingMode): Res
       console.warn('Anthropic API key not configured. Falling back to demo provider.');
       return demoProvider;
     }
-    // Anthropic adapter will be wired in M5
-    return demoProvider;
+    return new AnthropicAdapter();
   }
 
   if (providerId === 'gemini') {
@@ -23,8 +25,7 @@ export function getProvider(overrideId?: string, failureMode?: FailingMode): Res
       console.warn('Gemini API key not configured. Falling back to demo provider.');
       return demoProvider;
     }
-    // Gemini adapter will be wired in M5
-    return demoProvider;
+    return new GeminiAdapter();
   }
 
   return demoProvider;

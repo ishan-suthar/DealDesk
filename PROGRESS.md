@@ -9,8 +9,8 @@
 | **M2** | Welcome, dashboard, discovery, quick preview, Recycle Bin | Done |
 | **M3** | Deep research report | Done |
 | **M4** | Notebook and export | Done |
-| **M5** | Live providers (contract tests, recorded responses) | In Progress |
-| **M6** | Hardening and handoff | Not Started |
+| **M5** | Live providers (contract tests, recorded responses) | Done |
+| **M6** | Hardening and handoff | In Progress |
 
 ---
 
@@ -121,11 +121,42 @@
   - E2E test `tests/e2e/ac8_export.spec.ts` (AC8 non-empty DOCX and Markdown downloads).
 - Full milestone gate passed: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build` (89 unit tests, 8 E2E tests).
 
+### M5 — Live providers (contract tests, recorded responses)
+- Implemented SEC EDGAR Client (`src/server/services/edgarClient.ts`):
+  - Uses `SEC_USER_AGENT` header adhering to SEC fair access policy.
+  - Enforces minimum ≥150 ms spacing between requests (< 10 requests/second limit).
+  - Handles retries with exponential backoff on 429/5xx and network faults.
+  - Connects to SEC full-text search API (`efts.sec.gov`) and marks all retrieved filings as `primary` sources.
+- Implemented Versioned Extraction Prompts (`src/server/providers/prompts/`):
+  - `v1_discovery.ts` (`v1.0.0`): strictly injects `ctx.today`, explicit time windows, untrusted content warnings, and source ID provenance constraints.
+  - `v1_deep_section.ts` (`v1.0.0`): section-by-section extraction prompts with data integrity directives and open questions compilation.
+- Implemented Anthropic Provider Adapter (`src/server/providers/anthropic/`):
+  - Messages API integration with `web_search` and `web_fetch` server tools (`config.ts`).
+  - Captures evidence items from `tool_result` blocks for audit trail and provenance.
+  - Gracefully handles `error_code` blocks as warnings, supports turn continuation, and extracts via forced `submit_result` tool call.
+- Implemented Gemini Provider Adapter (`src/server/providers/gemini/`):
+  - Integrates `@google/genai` with Google Search grounding tool (`tools: [{ googleSearch: {} }]`).
+  - Gathers evidence items from `groundingMetadata` chunks and supports.
+  - Resolves redirect URIs server-side to canonical destination URLs before registering in the source pack.
+  - Extracts structured data using response JSON schema.
+- Implemented Budget Management (`src/server/jobs/budgetManager.ts`):
+  - Tracks `DAILY_SEARCH_CAP` (default 300) with automatic daily reset.
+  - Enforces per-job search and fetch limits (Discovery: 20 searches / 15 fetches; Deep Research: 30 searches / 25 fetches).
+- Implemented Smoke Script (`npm run live:smoke`):
+  - Validates SEC EDGAR connectivity and provider fallback when keys are absent.
+  - Exits with a clear, readable message guiding user how to configure API keys.
+- Automated Contract Tests (`tests/unit/providerContracts.test.ts`):
+  - 7 unit tests verifying Anthropic, Gemini, and EDGAR against recorded response fixtures with zero network requests.
+  - Verified that missing keys gracefully fall back to demo mode.
+- Full milestone gate passed: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build` (96 unit tests, 8 E2E tests).
+
 ---
 
 ## Decisions
 
-1. **Format-Neutral Export Model:**
+1. **Google Grounding Terms Review:**
+   - Reviewed Google Search grounding terms: Display requirements require maintaining publisher titles and domain names for grounded sources, which Deal Desk preserves in its source packs and citations. Redirect links from search grounding are resolved server-side to their canonical target URLs.
+2. **Format-Neutral Export Model:**
    - Modeled `ExportDocument` as an intermediate abstraction before rendering to DOCX and Markdown, ensuring both formats share identical section ordering, footnote numbering, and legend definitions.
 2. **2,000-Character Selection Guard:**
    - Enforced 2,000-character limit both client-side (UI badge/notification) and server-side (Zod schema rejection) per PRODUCT_SPEC §3.6.
