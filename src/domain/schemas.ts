@@ -277,5 +277,7 @@ export const SettingsSchema = z.object({
   id: z.string().default('default'),
   displayName: z.string().min(1).default('Nikita'),
   researchMode: z.string().default('demo'),
+  isDemoMode: z.boolean().optional(),
+  providerId: z.string().optional(),
   updatedAt: z.string(),
 });

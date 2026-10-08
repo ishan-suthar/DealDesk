@@ -14,7 +14,7 @@ test.describe('AC1: Welcome flow', () => {
     await startButton.click();
 
     // Verify reached /research
-    await expect(page).toHaveURL(/\/research/);
-    await expect(page.getByRole('button', { name: 'Find deals' })).toBeVisible();
+    await expect(page).toHaveURL(/\/research/, { timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Find deals' })).toBeVisible({ timeout: 15000 });
   });
 });

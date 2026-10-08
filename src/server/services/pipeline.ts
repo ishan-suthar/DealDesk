@@ -152,8 +152,11 @@ export async function runDiscoveryPipeline(params: DiscoveryPipelineParams): Pro
     const existing = await dealsRepository.getByDedupeKey(rawDeal.dedupeKey);
     const userStatus: UserStatus = existing ? existing.userStatus : 'discovered';
 
+    const dealOrigin = (provider.id === 'demo' || provider.id === 'failing_test') ? 'demo' : 'live';
+
     const processedDeal: Deal = {
       ...rawDeal,
+      origin: dealOrigin,
       dealValue: verifiedDealValue,
       userStatus,
       statusBeforeDelete: existing ? existing.statusBeforeDelete : undefined,

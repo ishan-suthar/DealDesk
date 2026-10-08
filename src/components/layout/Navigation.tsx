@@ -1,12 +1,23 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { DemoBanner } from './DemoBanner';
+import { useProviderStatus } from './ProviderContext';
 import { Search, BookOpen, Trash2, Settings as SettingsIcon, Compass } from 'lucide-react';
 
-export function Navigation({ isDemoMode = true }: { isDemoMode?: boolean }) {
+export function Navigation({
+  isDemoMode: propIsDemoMode,
+  providerId: propProviderId,
+}: {
+  isDemoMode?: boolean;
+  providerId?: string;
+}) {
   const pathname = usePathname();
+  const { status } = useProviderStatus();
+  const effectiveIsDemoMode = propIsDemoMode !== undefined ? propIsDemoMode : status.isDemoMode;
+  const effectiveProviderId = propProviderId || status.providerId;
 
   const navLinks = [
     { href: '/research', label: 'Research', icon: Compass },
@@ -17,7 +28,7 @@ export function Navigation({ isDemoMode = true }: { isDemoMode?: boolean }) {
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-      {isDemoMode && <DemoBanner />}
+      {effectiveIsDemoMode && <DemoBanner />}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-6">
@@ -53,6 +64,16 @@ export function Navigation({ isDemoMode = true }: { isDemoMode?: boolean }) {
           </div>
 
           <div className="flex items-center gap-3">
+            {effectiveIsDemoMode ? (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                Demo data
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                <span>Live research ({effectiveProviderId})</span>
+              </span>
+            )}
             <div className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
               Booth MBA Recruiting
             </div>

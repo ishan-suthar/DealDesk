@@ -172,8 +172,30 @@
   - `npm run typecheck` passed (0 errors).
   - `npm run lint` passed (0 warnings or errors).
   - `npm test` passed (100/100 tests in 11 test files).
-  - `npm run test:e2e` passed (13/13 Playwright test suites).
-  - `npm run build` passed (12/12 static/dynamic routes compiled).
+### Post-M6 Hardening — Live-Mode Detection & Dynamic Origin Persistence
+- Dynamic Provider State Resolution:
+  - Added `getActiveProviderInfo()` to `src/server/providers/providerFactory.ts` to inspect environment configuration (`RESEARCH_PROVIDER`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) and determine `isLive`, `isDemoMode`, `providerId`, `researchMode`, and `modeDisplay`.
+  - Updated `settingsRepository.getSettings()` to reflect current provider status dynamically so changing `.env.local` immediately takes effect across the application.
+  - Updated `src/app/layout.tsx` to read `getActiveProviderInfo()` on the server and hydrate `ProviderStatusProvider` client context, preventing any layout shifts or banner flashes.
+- Origin Persistence:
+  - Fixed `src/app/api/search/route.ts` to persist `provider: activeInfo.providerId` and `origin: activeInfo.isLive ? 'live' : 'demo'` instead of hardcoded `'demo'`.
+  - Updated `src/server/services/pipeline.ts` to tag discovered deals with `origin: (provider.id === 'demo' || provider.id === 'failing_test') ? 'demo' : 'live'`.
+  - Updated `src/app/api/search/current/route.ts` to return current provider status (`isDemoMode`, `providerId`, `researchMode`).
+- UI Consistency for Demo vs. Live Research:
+  - Updated `Navigation.tsx` to hide the yellow `Demo data` banner when in live mode, and render a dedicated badge: `Demo data` or `Live research ({providerId})` with live pulse indicator.
+  - Updated `src/app/settings/page.tsx` to display `Demo` or `Live — {researchMode}`, showing `Reset demo data` only in demo mode.
+  - Updated `src/app/research/page.tsx` search run summary line to display `Demo data` or `Live research ({provider})`.
+  - Updated `DealCard.tsx`, `QuickPreview.tsx`, and `ReportHeader.tsx` to display origin badges distinguishing demo and live items.
+- Automated Testing for Both Modes:
+  - Created `tests/unit/liveModeDetection.test.ts` (8 tests): verifies demo default, missing-key fallbacks, live anthropic/gemini activation, settings repository reflection, and search run origin persistence.
+  - Created `tests/e2e/live_demo_modes.spec.ts` (2 tests): verifies demo mode banner and chips, and verifies live mode hiding the yellow banner, displaying live provider badge, and hiding reset demo data.
+  - Configured `playwright.config.ts` webServer to run in demo mode (`RESEARCH_PROVIDER=demo`, `reuseExistingServer: false`), ensuring tests pass reliably regardless of local `.env.local` settings.
+- Full quality gate passed:
+  - `npm run typecheck` passed (0 errors).
+  - `npm run lint` passed (0 warnings or errors).
+  - `npm test` passed (108/108 tests in 12 test files).
+  - `npm run test:e2e` passed (15/15 Playwright tests).
+  - `npm run build` passed (all 12 routes generated).
 
 ---
 
@@ -200,6 +222,10 @@
    - Purge permanently checks `deal.userStatus === 'deleted'` and removes related notes and report versions, returning counts to confirm data cleanup.
 10. **Keyboard Accessible Menus:**
     - Block action menus use `focus-within:opacity-100` so keyboard users can access `Save to Notebook` actions via Tab navigation without needing mouse hover.
+11. **Dynamic Provider State vs Stored DB State:**
+    - `researchMode` and `isDemoMode` are derived dynamically using `getActiveProviderInfo()` from server configuration so changes in `.env.local` immediately propagate to the UI without requiring DB migrations or resets.
+12. **Playwright WebServer Isolation:**
+    - `playwright.config.ts` sets `env: { RESEARCH_PROVIDER: 'demo' }` and `reuseExistingServer: false` so that local developer `.env.local` API keys never leak into the deterministic E2E test suite.
 
 ---
 
@@ -213,7 +239,7 @@
 
 ## Known issues
 
-- None. All 100 unit tests and 13 E2E test suites pass with zero warnings or errors.
+- None. All 108 unit tests and 15 Playwright E2E tests pass with zero warnings or errors.
 
 ---
 

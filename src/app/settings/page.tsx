@@ -79,7 +79,7 @@ function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
-      <Navigation />
+      <Navigation isDemoMode={isDemo} providerId={researchMode} />
 
       <main className="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-8 space-y-6">
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-1">

@@ -4,7 +4,7 @@
   "description": "Deal Desk - IB M&A Research Workspace",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "test": "vitest run",

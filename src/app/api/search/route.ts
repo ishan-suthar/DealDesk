@@ -4,6 +4,7 @@ import { jobsRepository } from '@/server/repositories/jobsRepository';
 import { searchRunsRepository } from '@/server/repositories/searchRunsRepository';
 import { jobRunner } from '@/server/jobs/jobRunner';
 import { runDiscoveryPipeline } from '@/server/services/pipeline';
+import { getActiveProviderInfo } from '@/server/providers/providerFactory';
 import crypto from 'crypto';
 
 export const runtime = 'nodejs';
@@ -47,11 +48,14 @@ export async function POST(req: Request) {
       createdAt: nowIso,
     });
 
+    const activeInfo = getActiveProviderInfo();
+    const activeOrigin = activeInfo.isLive ? 'live' : 'demo';
+
     await searchRunsRepository.create({
       id: runId,
       filters,
-      provider: process.env.RESEARCH_PROVIDER || 'demo',
-      origin: 'demo',
+      provider: activeInfo.providerId,
+      origin: activeOrigin,
       jobId,
       startedAt: nowIso,
       resultDealIds: [],
@@ -65,6 +69,7 @@ export async function POST(req: Request) {
         filters,
         signal,
         onProgress: updateProgress,
+        providerOverride: activeInfo.providerId,
       });
     });
 

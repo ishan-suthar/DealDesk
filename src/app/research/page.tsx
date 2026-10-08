@@ -54,6 +54,8 @@ function ResearchDashboard() {
   // System state error / notices
   const [runErrorNotice, setRunErrorNotice] = useState<string | null>(null);
   const [budgetNotice, setBudgetNotice] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState<boolean | undefined>(undefined);
+  const [providerId, setProviderId] = useState<string | undefined>(undefined);
 
   // Fetch initial queue and saved deals
   const refreshQueue = useCallback(async () => {
@@ -66,6 +68,12 @@ function ResearchDashboard() {
         setRestoredDeals(data.queue.restored || []);
         setCurrentResults(data.queue.currentResults || []);
         setHiddenCount(data.hiddenCount || 0);
+        if (typeof data.isDemoMode === 'boolean') {
+          setIsDemoMode(data.isDemoMode);
+        }
+        if (typeof data.providerId === 'string') {
+          setProviderId(data.providerId);
+        }
 
         if (data.job && (data.job.status === 'running' || data.job.status === 'queued')) {
           setActiveJob(data.job);
@@ -414,7 +422,7 @@ function ResearchDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
-      <Navigation />
+      <Navigation isDemoMode={isDemoMode} providerId={providerId} />
 
       {/* Mobile / Tablet Tab Bar (Below 1024px) */}
       <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-around text-xs font-semibold">
@@ -506,8 +514,19 @@ function ResearchDashboard() {
           {/* Results Header: summary line & collapse toggle */}
           {currentRun && (
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-              <div className="text-slate-700 font-medium">
-                <span>Found {totalResultsCount} verified deals (up to {requestedMax} requested)</span>
+              <div className="text-slate-700 font-medium space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>Found {totalResultsCount} verified deals (up to {requestedMax} requested)</span>
+                  {currentRun.origin === 'demo' ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 uppercase tracking-wide">
+                      Demo data
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
+                      Live research ({currentRun.provider})
+                    </span>
+                  )}
+                </div>
                 {totalResultsCount < requestedMax && (
                   <span className="block text-slate-500 text-[11px] mt-0.5">
                     Fewer deals met the evidence bar than requested.

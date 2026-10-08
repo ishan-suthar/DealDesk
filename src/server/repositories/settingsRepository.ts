@@ -2,25 +2,45 @@ import { db } from '../db/client';
 import { settingsTable } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import type { Settings } from '@/domain/types';
+import { getActiveProviderInfo } from '../providers/providerFactory';
 
 export const settingsRepository = {
   async getSettings(): Promise<Settings> {
     const existing = db.select().from(settingsTable).where(eq(settingsTable.id, 'default')).get();
+    const info = getActiveProviderInfo();
+    const displayName = existing ? existing.displayName : 'Nikita';
+
     if (existing) {
+      if (existing.researchMode !== info.researchMode) {
+        db.update(settingsTable)
+          .set({ researchMode: info.researchMode, updatedAt: new Date().toISOString() })
+          .where(eq(settingsTable.id, 'default'))
+          .run();
+      }
       return {
         id: existing.id,
-        displayName: existing.displayName,
-        researchMode: existing.researchMode,
+        displayName,
+        researchMode: info.researchMode,
+        isDemoMode: info.isDemoMode,
+        providerId: info.providerId,
         updatedAt: existing.updatedAt,
       };
     }
+
     const defaultSettings: Settings = {
       id: 'default',
       displayName: 'Nikita',
-      researchMode: process.env.RESEARCH_PROVIDER || 'demo',
+      researchMode: info.researchMode,
+      isDemoMode: info.isDemoMode,
+      providerId: info.providerId,
       updatedAt: new Date().toISOString(),
     };
-    db.insert(settingsTable).values(defaultSettings).run();
+    db.insert(settingsTable).values({
+      id: defaultSettings.id,
+      displayName: defaultSettings.displayName,
+      researchMode: defaultSettings.researchMode,
+      updatedAt: defaultSettings.updatedAt,
+    }).run();
     return defaultSettings;
   },
 

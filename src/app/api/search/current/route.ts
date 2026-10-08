@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { searchRunsRepository } from '@/server/repositories/searchRunsRepository';
 import { dealsRepository } from '@/server/repositories/dealsRepository';
 import { jobsRepository } from '@/server/repositories/jobsRepository';
+import { getActiveProviderInfo } from '@/server/providers/providerFactory';
 import type { Deal } from '@/domain/types';
 
 export const runtime = 'nodejs';
@@ -38,6 +39,8 @@ export async function GET() {
     // Hidden in Recycle Bin count
     const hiddenCount = allDeals.filter((d) => d.userStatus === 'deleted').length;
 
+    const activeInfo = getActiveProviderInfo();
+
     return NextResponse.json({
       run: latestRun || null,
       job: activeJob || null,
@@ -47,6 +50,9 @@ export async function GET() {
         currentResults,
       },
       hiddenCount,
+      isDemoMode: activeInfo.isDemoMode,
+      providerId: activeInfo.providerId,
+      researchMode: activeInfo.researchMode,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 });

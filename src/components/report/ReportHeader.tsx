@@ -64,6 +64,15 @@ export function ReportHeader({
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 capitalize border border-slate-200">
               {deal.transactionStatus}
             </span>
+            {deal.origin === 'demo' ? (
+              <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                Demo data
+              </span>
+            ) : (
+              <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                Live research
+              </span>
+            )}
             {isOutOfDate && (
               <span className="text-xs text-amber-700 font-medium inline-flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                 <AlertCircle className="w-3 h-3" />

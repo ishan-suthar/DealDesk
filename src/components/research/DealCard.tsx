@@ -13,7 +13,7 @@ interface DealCardProps {
 export function DealCard({ deal, isSelected = false, onSelect }: DealCardProps) {
   const { headline, transactionStatus, userStatus, ranking, quickPreview, announcementDate } = deal;
 
-  const hasPrimary = ranking.features.primaryEvidence >= 1.0;
+  const hasPrimary = ranking?.features?.primaryEvidence ? ranking.features.primaryEvidence >= 1.0 : false;
 
   const statusColors: Record<string, string> = {
     pending: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -55,6 +55,17 @@ export function DealCard({ deal, isSelected = false, onSelect }: DealCardProps) 
             >
               {statusText}
             </span>
+
+            {/* Origin badge: Demo data vs Live research */}
+            {deal.origin === 'demo' ? (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider bg-amber-50 text-amber-800 border-amber-200">
+                Demo data
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider bg-emerald-50 text-emerald-800 border-emerald-200">
+                Live research
+              </span>
+            )}
 
             {/* Evidence badge */}
             <span

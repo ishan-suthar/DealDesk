@@ -27,23 +27,32 @@ export function QuickPreview({
   const companyMap = new Map<string, Company>(companies.map((c) => [c.id, c]));
 
   // Separate financial and legal advisers
-  const financialAdvisers = quickPreview.advisers.filter((a) => a.role === 'financial');
-  const legalAdvisers = quickPreview.advisers.filter((a) => a.role === 'legal');
+  const financialAdvisers = quickPreview.advisers?.filter((a) => a.role === 'financial') || [];
+  const legalAdvisers = quickPreview.advisers?.filter((a) => a.role === 'legal') || [];
 
   // Filter sources referenced in preview
-  const previewSources = sources.filter((s) => quickPreview.sourceIds.includes(s.id));
+  const previewSources = sources.filter((s) => quickPreview.sourceIds?.includes(s.id));
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-full max-h-[calc(100vh-140px)] overflow-hidden">
       {/* Header */}
       <div className="p-5 border-b border-slate-200 bg-slate-50/50 space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-teal-100 text-teal-800">
             Quick Preview
           </span>
           <span className="text-xs text-slate-500 font-medium">
             Screening brief for coffee chats
           </span>
+          {deal.origin === 'demo' ? (
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+              Demo data
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+              Live research
+            </span>
+          )}
         </div>
         <h2 className="text-lg font-bold text-slate-900">{headline}</h2>
       </div>
@@ -114,7 +123,7 @@ export function QuickPreview({
         <div className="space-y-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Parties & Roles</h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {quickPreview.parties.map((p, idx) => {
+            {quickPreview.parties?.map((p, idx) => {
               const comp = companyMap.get(p.companyId);
               return (
                 <div key={idx} className="p-2.5 rounded-lg border border-slate-200 bg-white">
