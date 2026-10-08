@@ -10,7 +10,7 @@
 | **M3** | Deep research report | Done |
 | **M4** | Notebook and export | Done |
 | **M5** | Live providers (contract tests, recorded responses) | Done |
-| **M6** | Hardening and handoff | In Progress |
+| **M6** | Hardening and handoff | Done |
 
 ---
 
@@ -149,6 +149,31 @@
   - 7 unit tests verifying Anthropic, Gemini, and EDGAR against recorded response fixtures with zero network requests.
   - Verified that missing keys gracefully fall back to demo mode.
 - Full milestone gate passed: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build` (96 unit tests, 8 E2E tests).
+- Committed as `M5: Live providers`.
+
+### M6 — Hardening and handoff
+- Accessibility & keyboard navigation pass:
+  - Ensured semantic headings (`h1` on Welcome and Notebook, `h2` on Left Rail and Quick Preview, `h3` on Deal Cards, `h4` on Preview subheadings).
+  - Associated form labels in `SearchControls.tsx` with explicit `htmlFor` and `id` attributes.
+  - Enabled keyboard focusability (`tabIndex={0}`, Enter/Space handlers) on discovery deal cards and `BlockActionMenu` buttons (`focus-within:opacity-100`).
+  - Implemented `tests/e2e/accessibility_keyboard.spec.ts` testing semantic headings/labels and full keyboard workflow: Search -> Preview -> Save to My Deals -> Deep Report -> Notebook.
+- Responsive design verification:
+  - Verified layout across desktop (1280px), tablet (1024px), and mobile (768px).
+  - Implemented `tests/e2e/responsive.spec.ts` testing 3-column desktop layout and tablet/mobile tab switching (`My Deals`, `Results`, `Workspace`) with automatic tab activation upon deal selection.
+- Security audit pass per `AGENTS.md`:
+  - Implemented `tests/unit/security.test.ts` statically verifying:
+    1. Zero client-side imports of server-only LLM SDKs (`@anthropic-ai/sdk`, `@google/genai`).
+    2. Zero instances of `dangerouslySetInnerHTML` across all `src/` files.
+    3. Zero hardcoded API keys or secrets in repository code or `.env.example`.
+    4. Dev server binds strictly to `127.0.0.1`.
+- Comprehensive `README.md`:
+  - Detailed documentation covering architecture, setup, demo mode operation, live provider configuration, SEC EDGAR compliance, test commands, privacy and data limits, and "Analysis — not investment advice" notice.
+- Full milestone gate passed:
+  - `npm run typecheck` passed (0 errors).
+  - `npm run lint` passed (0 warnings or errors).
+  - `npm test` passed (100/100 tests in 11 test files).
+  - `npm run test:e2e` passed (13/13 Playwright test suites).
+  - `npm run build` passed (12/12 static/dynamic routes compiled).
 
 ---
 
@@ -158,21 +183,23 @@
    - Reviewed Google Search grounding terms: Display requirements require maintaining publisher titles and domain names for grounded sources, which Deal Desk preserves in its source packs and citations. Redirect links from search grounding are resolved server-side to their canonical target URLs.
 2. **Format-Neutral Export Model:**
    - Modeled `ExportDocument` as an intermediate abstraction before rendering to DOCX and Markdown, ensuring both formats share identical section ordering, footnote numbering, and legend definitions.
-2. **2,000-Character Selection Guard:**
+3. **2,000-Character Selection Guard:**
    - Enforced 2,000-character limit both client-side (UI badge/notification) and server-side (Zod schema rejection) per PRODUCT_SPEC §3.6.
-3. **Deep Report Versioning:**
+4. **Deep Report Versioning:**
    - Reports are stored immutably with auto-incrementing `version` numbers per deal.
    - Refreshes run asynchronously via `deepPipeline`, letting the user browse and read prior report versions while a refresh runs in the background.
-2. **FactValue Strict Rendering:**
-   - Enforced value status visibility (`verified`, `single_source`, `unverified`, `not_found`, `not_publicly_disclosed`) directly in DOM structure to satisfy AC10.
-3. **Discovery Queue Persistence:**
+5. **FactValue Strict Rendering:**
+   - Enforced value status visibility (`confirmed`, `derived`, `unverified`, `not_disclosed`, `not_available`) directly in DOM structure to satisfy AC10.
+6. **Discovery Queue Persistence:**
    - Queue groups (On hold, Restored, Current results) are calculated dynamically on the server from the latest search run and deals database.
-2. **Dynamic Route Rendering:**
+7. **Dynamic Route Rendering:**
    - Explicitly configured `export const dynamic = 'force-dynamic'` on `/api/search/current` to ensure freshest SQLite state is returned upon every client poll.
-3. **Responsive Tab Switcher:**
+8. **Responsive Tab Switcher:**
    - Under 1024px, the 3 desktop columns collapse into mobile tabs (`My Deals`, `Results`, `Workspace`), automatically focusing on `Workspace` when a user clicks a deal card.
-4. **Permanent Removal Guard:**
+9. **Permanent Removal Guard:**
    - Purge permanently checks `deal.userStatus === 'deleted'` and removes related notes and report versions, returning counts to confirm data cleanup.
+10. **Keyboard Accessible Menus:**
+    - Block action menus use `focus-within:opacity-100` so keyboard users can access `Save to Notebook` actions via Tab navigation without needing mouse hover.
 
 ---
 
@@ -186,10 +213,10 @@
 
 ## Known issues
 
-- None at M2.
+- None. All 100 unit tests and 13 E2E test suites pass with zero warnings or errors.
 
 ---
 
 ## Dependencies added
 
-- No new dependencies added in M2 (used fixed stack from M1).
+- No dependencies added beyond the fixed stack defined in `AGENTS.md`.

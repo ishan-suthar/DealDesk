@@ -56,8 +56,9 @@ export function SearchControls({ onSearch, isLoading }: SearchControlsProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
         {/* 1. Sector */}
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-700">Sector</label>
+          <label htmlFor="search-sector" className="text-xs font-semibold text-slate-700">Sector</label>
           <select
+            id="search-sector"
             value={sector}
             onChange={(e) => handleSectorChange(e.target.value as Sector)}
             disabled={isLoading}
@@ -73,8 +74,9 @@ export function SearchControls({ onSearch, isLoading }: SearchControlsProps) {
 
         {/* 2. Time Window */}
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-700">Time Window</label>
+          <label htmlFor="search-time-window" className="text-xs font-semibold text-slate-700">Time Window</label>
           <select
+            id="search-time-window"
             value={timeWindow}
             onChange={(e) => setTimeWindow(e.target.value as TimeWindow)}
             disabled={isLoading}
@@ -89,8 +91,9 @@ export function SearchControls({ onSearch, isLoading }: SearchControlsProps) {
 
         {/* 3. Number of Deals */}
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-700">Max Deals</label>
+          <label htmlFor="search-max-deals" className="text-xs font-semibold text-slate-700">Max Deals</label>
           <select
+            id="search-max-deals"
             value={maxDeals}
             onChange={(e) => setMaxDeals(Number(e.target.value) as 5 | 10 | 15 | 25)}
             disabled={isLoading}
@@ -105,8 +108,9 @@ export function SearchControls({ onSearch, isLoading }: SearchControlsProps) {
 
         {/* 4. Deal Status */}
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-700">Status</label>
+          <label htmlFor="search-status" className="text-xs font-semibold text-slate-700">Status</label>
           <select
+            id="search-status"
             value={dealStatus}
             onChange={(e) => setDealStatus(e.target.value as DealStatusFilter)}
             disabled={isLoading}
@@ -121,8 +125,9 @@ export function SearchControls({ onSearch, isLoading }: SearchControlsProps) {
 
         {/* 5. Geography */}
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-700">Geography</label>
+          <label htmlFor="search-geography" className="text-xs font-semibold text-slate-700">Geography</label>
           <select
+            id="search-geography"
             value={geography}
             onChange={(e) => setGeography(e.target.value as GeographyRegion)}
             disabled={isLoading}
