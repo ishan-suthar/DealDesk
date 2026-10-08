@@ -28,6 +28,7 @@ import {
   DataOrigin,
   TimeWindow,
   GeographyRegion,
+  DealStatusFilter,
 } from './enums';
 import { TemplateSectionKey } from './template';
 
@@ -43,6 +44,7 @@ export type {
   TimeWindow,
   GeographyRegion,
   TemplateSectionKey,
+  DealStatusFilter,
 };
 
 export interface FactValue<T = unknown> {

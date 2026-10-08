@@ -6,8 +6,8 @@
 |---|---|---|
 | **M0** | Plan (no app code) | Done |
 | **M1** | Foundation | Done |
-| **M2** | Welcome, dashboard, discovery, quick preview, Recycle Bin | In Progress |
-| **M3** | Deep research report | Not Started |
+| **M2** | Welcome, dashboard, discovery, quick preview, Recycle Bin | Done |
+| **M3** | Deep research report | In Progress |
 | **M4** | Notebook and export | Not Started |
 | **M5** | Live providers (contract tests, recorded responses) | Not Started |
 | **M6** | Hardening and handoff | Not Started |
@@ -17,74 +17,64 @@
 ## Done
 
 ### M0 — Plan
-- Created `PLAN.md` with:
-  - Complete project file tree aligned with AGENTS.md and DATA_AND_RESEARCH.
-  - Drizzle SQLite tables mapping every entity from `docs/DATA_AND_RESEARCH.md` §3 (settings, companies, sources, deals, research_reports, notes, search_runs, jobs).
-  - API routes with HTTP methods, paths, Zod input validation schemas, response formats, and error codes (400, 404, 409).
-  - Architecture for in-process job runner, heartbeat tracking, client polling interval (1s), and fallback provider selection.
-  - Test mapping linking Acceptance Criteria AC1 through AC10 to specific unit, component, and E2E test files.
-- Initialized Git repository and configured local user.
+- Created `PLAN.md` with file tree, Drizzle tables, API route definitions, job runner architecture, and AC1–AC10 test mappings.
+- Initialized Git repository and set local config.
 - Committed as `M0: Plan`.
 
 ### M1 — Foundation
 - Scaffolded Next.js 14 App Router, TypeScript strict, Tailwind CSS, ESLint, Vitest, Playwright.
-- Implemented all required npm scripts in `package.json`: `dev`, `typecheck`, `lint`, `test`, `test:e2e`, `build`, `db:migrate`, `db:seed`, `db:reset`.
-- Implemented `src/domain`:
-  - `enums.ts`: ValueStatus, SourceType, TransactionStatus, UserStatus, ClaimType, ValueType, JobStatus, DataOrigin, TimeWindow, GeographyRegion, status labels and descriptions.
-  - `taxonomy.ts`: SECTORS and detailed subsectors for Consumer & Retail and 7 additional sectors.
-  - `template.ts`: Governing deep report order from TEMPLATE_MAPPING (snapshot, companies, mechanics, rationale, sources) and field rule codes (S, C, A, D, M).
-  - `schemas.ts`: Zod boundary schemas for all entities, filters, and API models.
-  - `types.ts`: Inferred TypeScript types.
-  - `userStatus.ts`: Pure state machine `transition(current, action, statusBeforeDelete)` and typed error `InvalidStatusTransitionError`.
-- Implemented SQLite Drizzle schema and migrations:
-  - Tables: `settings`, `companies`, `sources`, `deals`, `research_reports`, `notes`, `search_runs`, `jobs`.
-  - Database client with WAL mode and foreign keys.
-  - Automated migration runner `db:migrate`.
-  - Database reset `db:reset` and fixture seeder `db:seed`.
-- Created 10 fictional demo fixtures in `src/fixtures/demoDeals.ts` and `src/fixtures/demoReports.ts`:
-  - All source URLs strictly under `https://example.com/demo/`.
-  - Fictional companies only; relative dates anchored to seed time.
-  - Fixture #1 (Harborline / Maple Crest) includes seeded deep report v1 and 3 notes.
-  - Fixture #8 is on `review` hold; Fixture #9 is in Recycle Bin (`deleted`); Fixture #10 is >90 days old.
-- Implemented unit-tested pure services in `src/server/services/`:
-  - `normalizer.ts`: URL canonicalization (stripping tracking params, fragments, trailing slashes), source deduplication, company name normalization, deal `dedupeKey`, 10-day deduplication window.
-  - `verification.ts`: `numberAppearsInText` (handles billions, millions, €, percentages, multiples), Rules 1–8 (provenance, fact support, number matching, status ceiling, conflict detection, date window, analysis reasoning).
-  - `ranking.ts`: Code-based deal scoring (sector relevance 30%, recency 20%, significance 15%, primary evidence 15%, trend relevance 15%, novelty 5%) and top 2–3 reasons generation.
-  - `calculations.ts`: EV/EBITDA, EV/Revenue multiples and premiums with status ceiling.
-  - `sourceClassifier.ts`: Domain allowlist classification.
-- Implemented repository layer in `src/server/repositories/`:
-  - `settingsRepository.ts`, `companiesRepository.ts`, `sourcesRepository.ts`, `dealsRepository.ts`, `reportsRepository.ts`, `notesRepository.ts`, `searchRunsRepository.ts`, `jobsRepository.ts`.
-- Created welcome screen (`/`) with exact UI copy: `Welcome {displayName}`, `Find a deal worth talking about.`, and `Start researching`.
-- Unit tests: 72 tests across 6 suites in `tests/unit/`, including:
-  - All valid and invalid state machine transitions.
-  - Fixture URL domain enforcement test (`https://example.com/demo/`).
-  - Normalization and deduplication.
-  - Verification rules 1–8 and number matching.
-  - Ranking scoring and reasons.
-  - Calculations and status ceilings.
-- Gate passed: `npm run typecheck && npm run lint && npm test && npm run build`.
+- Implemented all required npm scripts: `dev`, `typecheck`, `lint`, `test`, `test:e2e`, `build`, `db:migrate`, `db:seed`, `db:reset`.
+- Implemented `src/domain` enums, schemas, types, taxonomy, template definition, and `userStatus.ts` state machine.
+- Implemented SQLite Drizzle schema, migrations, and repository layer.
+- Populated 10 fictional demo fixtures with URLs strictly under `https://example.com/demo/`.
+- Implemented pure services: `normalizer.ts`, `verification.ts` (rules 1–8 and `numberAppearsInText`), `ranking.ts`, `calculations.ts`, `sourceClassifier.ts`.
+- Created welcome screen (`/`) with exact copy.
+- 72 unit tests passing in `tests/unit/`.
+- Committed as `M1: Foundation`.
+
+### M2 — Welcome, dashboard, discovery, quick preview, Recycle Bin
+- Built research dashboard (`/research`):
+  - Three-column layout (1280px wide) transitioning to tabs (`My Deals`, `Results`, `Workspace`) below 1024px.
+  - Left rail with searchable saved-deal study list, transaction status chips, and "researched recently" hints.
+  - Top search controls: Sector, Subsectors (multi-select), Time window, Max deals (5, 10, 15, 25), Deal status, Include rumored checkbox, Geography.
+  - Active filter chips and summary line with exact copy.
+  - Progress stages showing in exact order: `Finding candidates` -> `Checking primary sources` -> `Extracting deal facts` -> `Ranking for interview usefulness`.
+  - Incremental cards showing transaction status chips, evidence badges (`Primary source` / `Secondary only`), and top 2–3 ranking reasons.
+  - Center queue groups: **On hold**, **Restored**, and **Current results**, plus `Collapse results` / `Show results` toggle.
+  - "N hidden in Recycle Bin" note.
+- Built Quick Preview panel:
+  - Screening brief displaying headline, summary, background, parties and roles (PE sponsors marked), advisers (financial & legal separate; `Not yet found` when empty), deal value via `FactValue`, multiples, differentiators (`Analysis — not investment advice`), drivers, and sources.
+  - Footer with exact 3 buttons in order: `Save to My Deals` · `Hold for review` (or `Remove hold`) · `I don't like this deal` (or "Saved to My Deals" and `Open research` if saved).
+- Built Recycle Bin (`/recycle-bin`):
+  - Lists deleted deals with deletion date, prior status, original filter chips.
+  - Exact action buttons: `Restore` and `Permanently remove`.
+  - Permanent remove modal dialog confirming destruction of notes and report versions.
+- Built Settings (`/settings`):
+  - Editable display name, read-only research mode (`Demo` or `Live — {provider}`), and `Reset demo data` with confirmation modal dialog.
+- Built Toast system with 8-second undo toasts for `I don't like this deal` and success toast for `Save to My Deals`.
+- Built Job Runner singleton with 5s heartbeat, interruption recovery, and 1s client polling.
+- Implemented `failing_test` provider and verified all 8 system states from PRODUCT_SPEC §3.8.
+- Persistent `Demo data` banner displayed across the application in demo mode.
+- E2E test suite passing with Playwright:
+  - AC1: Welcome page flow (`tests/e2e/ac1_welcome.spec.ts`)
+  - AC2: Discovery run in demo mode (`tests/e2e/ac2_discovery.spec.ts`)
+  - AC3: Quick preview fields & 3 footer buttons (`tests/e2e/ac3_quick_preview.spec.ts`)
+  - AC4: Save to My Deals & left rail persistence (`tests/e2e/ac4_save_deal.spec.ts`)
+  - AC7: Recycle bin restore flow (`tests/e2e/ac7_recycle_bin.spec.ts`)
+- Full milestone gate passed: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build`.
 
 ---
 
 ## Decisions
 
-1. **Database Schema & SQLite JSON Columns:**
-   - Entities with rich nested structures (`FactValue`, `QuickPreview`, `ranking`, `ReportSection[]`, `SearchFilters`, tags/arrays) are mapped to SQLite `text` columns using Drizzle's `{ mode: 'json' }`.
-   - Zod schemas in `src/domain/schemas.ts` parse and validate data at the repository and API boundaries.
-2. **Provider Selection and Fallback:**
-   - `RESEARCH_PROVIDER` defaults to `demo`.
-   - If `anthropic` or `gemini` is requested without corresponding environment variables (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`), the server logs a notice and seamlessly falls back to `demo` provider, displaying the required UI alert: `"Live research isn't configured. Running in demo mode."`.
-3. **Google Grounding Terms Review (Gemini):**
-   - Google Search Grounding terms require displaying grounding attributions/search suggestions. The UI includes source provenance links for all claims. Caching and export are permitted for internal research review briefs.
-4. **Dates & Clock Injection:**
-   - All relative dates (seed fixtures, search windows, report relative times) compute from the server-provided `ctx.today` or current server date, never relying on LLM internal assumptions.
-5. **State Machine Conflicts & Purge:**
-   - Any invalid transition according to `userStatus.ts` yields an HTTP 409 Conflict.
-   - Permanent removal (`purge`) is only permitted on deals currently in `deleted` status, and triggers deletion of associated notes and research report versions.
-6. **Fixture Isolation:**
-   - All fixtures use fictional companies with URLs strictly under `https://example.com/demo/`. Tested via unit tests to guarantee zero real company leakage.
-7. **Next.js & React Versioning:**
-   - Pinned Next.js to 14.2.35 and React to 18.3.1 to ensure seamless compatibility with `better-sqlite3`, Radix UI, and Drizzle ORM.
+1. **Discovery Queue Persistence:**
+   - Queue groups (On hold, Restored, Current results) are calculated dynamically on the server from the latest search run and deals database.
+2. **Dynamic Route Rendering:**
+   - Explicitly configured `export const dynamic = 'force-dynamic'` on `/api/search/current` to ensure freshest SQLite state is returned upon every client poll.
+3. **Responsive Tab Switcher:**
+   - Under 1024px, the 3 desktop columns collapse into mobile tabs (`My Deals`, `Results`, `Workspace`), automatically focusing on `Workspace` when a user clicks a deal card.
+4. **Permanent Removal Guard:**
+   - Purge permanently checks `deal.userStatus === 'deleted'` and removes related notes and report versions, returning counts to confirm data cleanup.
 
 ---
 
@@ -98,19 +88,10 @@
 
 ## Known issues
 
-- None at M1.
+- None at M2.
 
 ---
 
 ## Dependencies added
 
-- `next@14.2.35`, `react@18.3.1`, `react-dom@18.3.1`: App Router framework.
-- `better-sqlite3@13.0.3`, `drizzle-orm@0.45.3`, `drizzle-kit@0.31.11`: Local-first SQLite database and ORM migrations.
-- `zod@4.6.5`: Type-safe schema boundaries.
-- `tailwindcss@3.4.17`, `postcss@8.5.29`, `autoprefixer@10.6.1`, `clsx`, `tailwind-merge`: Styling.
-- `@radix-ui/react-*` primitives: Accessible UI components (dialog, dropdown-menu, select, tabs, toast, slot).
-- `lucide-react`: UI iconography.
-- `docx@9.9.0`, `react-markdown@10.1.0`: DOCX export and sanitized markdown rendering.
-- `@anthropic-ai/sdk`, `@google/genai`, `zod-to-json-schema`: Server-only LLM SDKs and tool schema generation.
-- `vitest@2.1.8`, `@playwright/test`: Unit and E2E test runners.
-- `tsx`: TypeScript execution for migrations and seed scripts.
+- No new dependencies added in M2 (used fixed stack from M1).
