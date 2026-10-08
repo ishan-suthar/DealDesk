@@ -22,6 +22,7 @@ interface DeepReportViewProps {
   onRemoveFromMyDeals: () => void;
   onSaveToNotebook?: (data: {
     blockId: string;
+    coveredBlockIds?: string[];
     sectionKey: string;
     quote: string;
     sourceIds: string[];
@@ -44,6 +45,11 @@ export function DeepReportView({
   const containerRef = useRef<HTMLDivElement>(null);
   const [floatingSelection, setFloatingSelection] = useState<{
     text: string;
+    rawLength: number;
+    isTooLong: boolean;
+    blockId: string;
+    coveredBlockIds: string[];
+    sectionKey: string;
     x: number;
     y: number;
   } | null>(null);
@@ -57,8 +63,8 @@ export function DeepReportView({
         return;
       }
 
-      const text = selection.toString().trim();
-      if (text.length === 0) {
+      const rawText = selection.toString().trim();
+      if (rawText.length === 0) {
         setFloatingSelection(null);
         return;
       }
@@ -66,8 +72,33 @@ export function DeepReportView({
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
 
+      // Multi-block detection
+      const container = containerRef.current;
+      const coveredBlocks: string[] = [];
+      let detectedSection = 'snapshot';
+
+      let curr: Node | null = range.startContainer;
+      while (curr && curr !== container) {
+        if (curr instanceof HTMLElement) {
+          if (curr.dataset.blockId && !coveredBlocks.includes(curr.dataset.blockId)) {
+            coveredBlocks.push(curr.dataset.blockId);
+          }
+          if (curr.dataset.sectionKey) {
+            detectedSection = curr.dataset.sectionKey;
+          }
+        }
+        curr = curr.parentNode;
+      }
+
+      const isTooLong = rawText.length > 2000;
+
       setFloatingSelection({
-        text: text.slice(0, 2000), // Max 2,000 characters
+        text: rawText.slice(0, 2000),
+        rawLength: rawText.length,
+        isTooLong,
+        blockId: coveredBlocks[0] || 'selection',
+        coveredBlockIds: coveredBlocks,
+        sectionKey: detectedSection,
         x: rect.left + rect.width / 2,
         y: rect.top - 10,
       });
@@ -103,16 +134,22 @@ export function DeepReportView({
             top: `${floatingSelection.y}px`,
             transform: 'translate(-50%, -100%)',
           }}
-          className="z-50 animate-in fade-in zoom-in-95"
+          className="z-50 animate-in fade-in zoom-in-95 flex flex-col items-center gap-1"
         >
+          {floatingSelection.isTooLong && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-sm">
+              Max saved selection: 2,000 characters ({floatingSelection.rawLength} selected)
+            </span>
+          )}
           <button
             type="button"
             onMouseDown={(e) => {
               e.preventDefault();
               if (onSaveToNotebook) {
                 onSaveToNotebook({
-                  blockId: 'selection',
-                  sectionKey: 'snapshot',
+                  blockId: floatingSelection.blockId,
+                  coveredBlockIds: floatingSelection.coveredBlockIds,
+                  sectionKey: floatingSelection.sectionKey,
                   quote: floatingSelection.text,
                   sourceIds: currentReport.sourceIds,
                   reportVersionId: currentReport.id,

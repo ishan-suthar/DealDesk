@@ -655,8 +655,31 @@ function ResearchDashboard() {
                 onRefresh={handleRefreshResearch}
                 onCancelRefresh={handleCancelDeepJob}
                 onRemoveFromMyDeals={handleRemoveFromMyDeals}
-                onSaveToNotebook={({ quote }) => {
-                  showToast({ message: 'Saved quote to Notebook', type: 'success' });
+                onSaveToNotebook={async (data) => {
+                  try {
+                    const res = await fetch('/api/notes', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        dealId: selectedDeal.id,
+                        templateSection: data.sectionKey,
+                        quote: data.quote,
+                        blockId: data.blockId,
+                        coveredBlockIds: (data as any).coveredBlockIds || [data.blockId],
+                        sourceIds: data.sourceIds || [],
+                        reportVersionId: data.reportVersionId || currentReport.id,
+                        comment: '',
+                      }),
+                    });
+                    if (res.ok) {
+                      showToast({ message: 'Saved to Notebook', type: 'success' });
+                    } else {
+                      const errData = await res.json();
+                      showToast({ message: errData.error || 'Failed to save note', type: 'error' });
+                    }
+                  } catch (err: any) {
+                    showToast({ message: err.message || 'Failed to save note', type: 'error' });
+                  }
                 }}
               />
             </div>

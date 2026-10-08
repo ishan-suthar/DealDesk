@@ -30,8 +30,8 @@ export function BlockActionMenu({
     <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-1">
       <button
         type="button"
-        title="Save block to Notebook"
-        aria-label="Save block to Notebook"
+        title="Save to Notebook"
+        aria-label="Save to Notebook"
         onClick={(e) => {
           e.stopPropagation();
           if (onSaveToNotebook) {
@@ -44,9 +44,10 @@ export function BlockActionMenu({
             });
           }
         }}
-        className="p-1 rounded text-slate-400 hover:text-teal-800 hover:bg-slate-100 focus:outline-none focus:ring-1 focus:ring-teal-600 transition-colors"
+        className="px-2 py-1 rounded text-xs font-semibold text-slate-500 hover:text-teal-900 hover:bg-teal-50 border border-transparent hover:border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-600 transition-colors flex items-center gap-1"
       >
         <Bookmark className="w-3.5 h-3.5" />
+        <span>Save to Notebook</span>
       </button>
     </div>
   );

@@ -11,6 +11,8 @@ import {
   Loader2,
   XCircle,
   MoreHorizontal,
+  Download,
+  FileText,
 } from 'lucide-react';
 
 interface ReportHeaderProps {
@@ -101,19 +103,40 @@ export function ReportHeader({
             <span>Refresh research</span>
           </button>
 
-          {/* More options menu (Remove from My Deals) */}
+          {/* Export dropdown */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowMenu((prev) => !prev)}
-              aria-label="Report options menu"
-              className="p-1.5 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-600"
+              aria-label="Report export and options"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-md transition-colors"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5" />
+              <span>Export</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-30 animate-in fade-in">
+              <div className="absolute right-0 mt-1 w-52 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-30 animate-in fade-in">
+                <a
+                  href={`/api/export/${deal.id}?format=docx`}
+                  download
+                  onClick={() => setShowMenu(false)}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <Download className="w-3.5 h-3.5 text-teal-800" />
+                  <span>Export DOCX (Word)</span>
+                </a>
+                <a
+                  href={`/api/export/${deal.id}?format=markdown`}
+                  download
+                  onClick={() => setShowMenu(false)}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Export Markdown</span>
+                </a>
+                <div className="border-t border-slate-100 my-1" />
                 <button
                   type="button"
                   onClick={() => {

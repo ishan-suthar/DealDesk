@@ -8,8 +8,8 @@
 | **M1** | Foundation | Done |
 | **M2** | Welcome, dashboard, discovery, quick preview, Recycle Bin | Done |
 | **M3** | Deep research report | Done |
-| **M4** | Notebook and export | In Progress |
-| **M5** | Live providers (contract tests, recorded responses) | Not Started |
+| **M4** | Notebook and export | Done |
+| **M5** | Live providers (contract tests, recorded responses) | In Progress |
 | **M6** | Hardening and handoff | Not Started |
 
 ---
@@ -86,11 +86,50 @@
   - `tests/e2e/ac5_deep_report.spec.ts`: AC5 Deep research report, versioning and refresh flow passing.
 - Full milestone gate passed: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build`.
 
+### M4 — Notebook and export
+- Implemented Format-Neutral Export Document Service (`src/server/services/export/buildExportDocument.ts`):
+  - Strictly follows template section order (Sections 1–4).
+  - Consolidated render-state legend with exact labels for all 6 value statuses.
+  - Numbered footnote indexing `[1]`, `[2]`, ... mapping claims and notes to external sources.
+  - Groups notes by template section in template order, followed by "General notes", placing pinned notes first.
+  - Accurately prints `Not publicly disclosed` or `Not available from reviewed sources` for missing or undisclosed fields; zero fabricated values.
+  - Flags quotes originating from earlier report versions ("From an earlier report version").
+- Implemented Exporters:
+  - DOCX Exporter (`src/server/services/export/renderDocx.ts`): Uses `docx` to generate styled Word documents with tables, styled headings, notes, and bibliography.
+  - Markdown Exporter (`src/server/services/export/renderMarkdown.ts`): Formats complete Markdown document with tables and footnotes.
+- Implemented Export API (`src/app/api/export/[dealId]/route.ts`):
+  - Supports `?format=docx` and `?format=markdown` with Content-Disposition attachment downloads.
+  - Added Export dropdown with one-click download buttons to report header.
+- Implemented Notes API Routes (`src/app/api/notes/`):
+  - `GET /api/notes`: Lists notes with deal, section, and full-text search filters.
+  - `POST /api/notes`: Creates note with strict 2,000-character quote limit enforcement.
+  - `PATCH /api/notes/[id]`: Updates personal comments, pin status, or position.
+  - `DELETE /api/notes/[id]`: Deletes note with support for client undo toast restoration.
+  - `POST /api/notes/reorder`: Persists reordered note positions.
+- Implemented Full Notebook View (`/notebook`):
+  - Filter by deal and by template section.
+  - Full-text search over quotes and personal comments.
+  - Add manual notes with optional deal and section tags.
+  - Inline editing, delete with 8-second undo toast, pin toggling.
+  - Drag and keyboard reordering (`Move up` / `Move down`).
+- Enhanced Deep Report View:
+  - Multi-block selection handling with 2,000-char feedback.
+  - Floating `Save to Notebook` button and accessible keyboard block action buttons.
+- Automated Tests:
+  - Unit test `tests/unit/exportDocument.test.ts` (AC8 export structure, legend, footnotes, note grouping).
+  - E2E test `tests/e2e/ac6_notebook.spec.ts` (AC6 text selection, notebook search, persistence, and manual notes).
+  - E2E test `tests/e2e/ac8_export.spec.ts` (AC8 non-empty DOCX and Markdown downloads).
+- Full milestone gate passed: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build` (89 unit tests, 8 E2E tests).
+
 ---
 
 ## Decisions
 
-1. **Deep Report Versioning:**
+1. **Format-Neutral Export Model:**
+   - Modeled `ExportDocument` as an intermediate abstraction before rendering to DOCX and Markdown, ensuring both formats share identical section ordering, footnote numbering, and legend definitions.
+2. **2,000-Character Selection Guard:**
+   - Enforced 2,000-character limit both client-side (UI badge/notification) and server-side (Zod schema rejection) per PRODUCT_SPEC §3.6.
+3. **Deep Report Versioning:**
    - Reports are stored immutably with auto-incrementing `version` numbers per deal.
    - Refreshes run asynchronously via `deepPipeline`, letting the user browse and read prior report versions while a refresh runs in the background.
 2. **FactValue Strict Rendering:**
