@@ -16,6 +16,8 @@ import {
   JobUsageSchema,
   JobErrorSchema,
   SettingsSchema,
+  CandidateDealSchema,
+  DiscoveryPayloadSchema,
 } from './schemas';
 import {
   ValueStatus,
@@ -74,3 +76,5 @@ export type Job = z.infer<typeof JobSchema>;
 export type JobUsage = z.infer<typeof JobUsageSchema>;
 export type JobError = z.infer<typeof JobErrorSchema>;
 export type Settings = z.infer<typeof SettingsSchema>;
+export type CandidateDeal = z.infer<typeof CandidateDealSchema>;
+export type DiscoveryPayload = z.infer<typeof DiscoveryPayloadSchema>;

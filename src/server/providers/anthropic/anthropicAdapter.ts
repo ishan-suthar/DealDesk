@@ -9,6 +9,7 @@ import type {
 import { ANTHROPIC_CONFIG } from './config';
 import { buildDiscoverySystemPrompt, buildDiscoveryUserPrompt } from '../prompts/v1_discovery';
 import { buildDeepSectionSystemPrompt, buildDeepSectionUserPrompt } from '../prompts/v1_deep_section';
+import { normalizeDiscoveryPayload } from '../../services/normalizer';
 
 export class AnthropicAdapter implements ResearchProvider {
   readonly id = 'anthropic';
@@ -138,6 +139,56 @@ export class AnthropicAdapter implements ResearchProvider {
     }
 
     // Extraction call: Tool-free or forced submit_result tool call to return clean JSON
+    const discoverySchema = {
+      type: 'object',
+      properties: {
+        candidates: {
+          type: 'array',
+          description: 'List of candidate M&A transactions',
+          items: {
+            type: 'object',
+            properties: {
+              headline: { type: 'string', description: 'Transaction headline' },
+              buyerName: { type: 'string', description: 'Acquiring entity or buyer' },
+              targetName: { type: 'string', description: 'Target company acquired' },
+              dealValue: {
+                type: 'object',
+                properties: {
+                  amount: { type: 'number' },
+                  currency: { type: 'string' },
+                  unit: { type: 'string', enum: ['units', 'thousands', 'millions', 'billions'] },
+                  valueType: { type: 'string', enum: ['equity_value', 'enterprise_value', 'purchase_price', 'unknown'] },
+                },
+              },
+              announcementDate: { type: 'string', description: 'Announcement date YYYY-MM-DD' },
+              transactionStatus: { type: 'string', enum: ['pending', 'closed', 'rumored', 'terminated', 'unknown'] },
+              sourceIds: { type: 'array', items: { type: 'string' }, description: 'Cited source IDs (e.g. S1, S2)' },
+            },
+            required: ['headline', 'sourceIds'],
+          },
+        },
+        deals: {
+          type: 'array',
+          description: 'Alternative candidate deals list',
+        },
+        extractedData: {
+          type: 'object',
+          description: 'Nested extraction container',
+        },
+      },
+    };
+
+    const deepSectionSchema = {
+      type: 'object',
+      properties: {
+        extractedData: {
+          type: 'object',
+          description: 'The structured extraction output',
+        },
+      },
+      required: ['extractedData'],
+    };
+
     const response = await this.client.messages.create(
       {
         model: req.kind === 'deep_section' ? ANTHROPIC_CONFIG.modelDeep : ANTHROPIC_CONFIG.modelFast,
@@ -147,17 +198,8 @@ export class AnthropicAdapter implements ResearchProvider {
         tools: [
           {
             name: 'submit_result',
-            description: 'Submit the extracted JSON data adhering strictly to the schema',
-            input_schema: {
-              type: 'object',
-              properties: {
-                extractedData: {
-                  type: 'object',
-                  description: 'The structured extraction output',
-                },
-              },
-              required: ['extractedData'],
-            },
+            description: 'Submit the extracted structured data adhering strictly to the schema',
+            input_schema: (req.kind === 'discovery' ? discoverySchema : deepSectionSchema) as any,
           },
         ],
         tool_choice: { type: 'tool', name: 'submit_result' },
@@ -165,14 +207,20 @@ export class AnthropicAdapter implements ResearchProvider {
       { signal: ctx.signal }
     );
 
+    let rawPayload: unknown = null;
     for (const block of response.content) {
       if (block.type === 'tool_use' && block.name === 'submit_result') {
         const input = block.input as any;
-        return input.extractedData || input;
+        rawPayload = input.extractedData || input;
+        break;
       }
     }
 
-    return {};
+    if (req.kind === 'discovery') {
+      return normalizeDiscoveryPayload(rawPayload ?? {});
+    }
+
+    return rawPayload ?? {};
   }
 }
 

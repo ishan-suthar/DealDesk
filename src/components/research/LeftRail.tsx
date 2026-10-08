@@ -3,24 +3,53 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import type { Deal } from '@/domain/types';
-import { Search, BookOpen, Trash2, Bookmark, ExternalLink } from 'lucide-react';
+import { Search, BookOpen, Trash2, Bookmark } from 'lucide-react';
 
 interface LeftRailProps {
   savedDeals: Deal[];
   selectedDealId?: string;
   onSelectDeal: (deal: Deal) => void;
+  onBulkRemove: (deals: Deal[]) => Promise<void>;
 }
 
 export function LeftRail({
   savedDeals,
   selectedDealId,
   onSelectDeal,
+  onBulkRemove,
 }: LeftRailProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const filteredDeals = savedDeals.filter((d) =>
     d.headline.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const toggleDeal = (id: string) => setSelectedIds((current) =>
+    current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id]
+  );
+
+  const toggleVisibleDeals = () => {
+    const visibleIds = filteredDeals.map((deal) => deal.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : Array.from(new Set([...current, ...visibleIds])));
+  };
+
+  const handleBulkRemove = async () => {
+    const dealsToRemove = savedDeals.filter((deal) => selectedIds.includes(deal.id));
+    if (dealsToRemove.length === 0) return;
+    if (!window.confirm(`Move ${dealsToRemove.length} selected deal${dealsToRemove.length === 1 ? '' : 's'} to the Recycle Bin? You can restore them later.`)) return;
+    setIsRemoving(true);
+    try {
+      await onBulkRemove(dealsToRemove);
+      setSelectedIds([]);
+    } finally {
+      setIsRemoving(false);
+    }
+  };
 
   const statusColors: Record<string, string> = {
     pending: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -53,6 +82,21 @@ export function LeftRail({
             className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600 focus:bg-white"
           />
         </div>
+
+        {savedDeals.length > 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-600 cursor-pointer">
+              <input type="checkbox" checked={filteredDeals.length > 0 && filteredDeals.every((deal) => selectedIds.includes(deal.id))} onChange={toggleVisibleDeals} aria-label="Select all visible saved deals" className="accent-teal-700" />
+              Select visible
+            </label>
+            {selectedIds.length > 0 && (
+              <button type="button" onClick={handleBulkRemove} disabled={isRemoving} className="inline-flex items-center gap-1 px-2 py-1 rounded border border-rose-200 bg-rose-50 text-[10px] font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-60">
+                <Trash2 className="w-3 h-3" />
+                {isRemoving ? 'Moving…' : `Delete (${selectedIds.length})`}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* List */}
@@ -89,6 +133,7 @@ export function LeftRail({
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <input type="checkbox" checked={selectedIds.includes(deal.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleDeal(deal.id)} aria-label={`Select ${deal.headline}`} className="accent-teal-700 shrink-0" />
                   <span
                     className={`text-[9px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider ${
                       statusColors[deal.transactionStatus] || 'bg-slate-100 text-slate-700'

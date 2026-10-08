@@ -174,6 +174,40 @@ export const DealSchema = z.object({
   updatedAt: z.string(),
 });
 
+export const CandidateDealSchema = z
+  .object({
+    id: z.string().optional(),
+    headline: z.string().min(1),
+    buyerName: z.string().optional(),
+    targetName: z.string().optional(),
+    buyers: z.array(z.string()).optional(),
+    targets: z.array(z.string()).optional(),
+    buyerIds: z.array(z.string()).optional(),
+    targetIds: z.array(z.string()).optional(),
+    sellerIds: z.array(z.string()).optional(),
+    sourceIds: z.array(z.string()).default([]),
+    dealValue: z.union([MoneyFactValueSchema, MoneySchema, z.record(z.string(), z.unknown())]).optional(),
+    announcementDate: z.union([StringFactValueSchema, z.string()]).optional(),
+    closingDate: z.union([StringFactValueSchema, z.string()]).optional(),
+    transactionStatus: TransactionStatusSchema.optional(),
+    transactionStatusSourceIds: z.array(z.string()).optional(),
+    sector: z.string().optional(),
+    subsectors: z.array(z.string()).optional(),
+    geographyRegion: z.enum(['US', 'North America', 'Europe', 'Other']).optional(),
+    dedupeKey: z.string().optional(),
+    origin: DataOriginSchema.optional(),
+    userStatus: UserStatusSchema.optional(),
+    statusBeforeDelete: z.enum(['discovered', 'review', 'saved']).optional(),
+    quickPreview: QuickPreviewSchema.optional(),
+    ranking: DealRankingSchema.optional(),
+  })
+  .passthrough();
+
+export const DiscoveryPayloadSchema = z.object({
+  candidates: z.array(CandidateDealSchema),
+  deals: z.array(CandidateDealSchema).optional(),
+});
+
 export const TemplateSectionKeySchema = z.enum([
   'snapshot',
   'companies',

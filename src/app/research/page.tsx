@@ -417,6 +417,23 @@ function ResearchDashboard() {
     }
   };
 
+  const handleBulkRemoveFromMyDeals = async (deals: Deal[]) => {
+    try {
+      const responses = await Promise.all(deals.map((deal) => fetch(`/api/deals/${deal.id}/status`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove' }),
+      })));
+      const failed = responses.filter((response) => !response.ok).length;
+      await refreshQueue();
+      if (selectedDeal && deals.some((deal) => deal.id === selectedDeal.id)) {
+        setSelectedDeal(null);
+        setWorkspaceMode('preview');
+      }
+      showToast({ message: failed > 0 ? `${deals.length - failed} deal(s) moved to Recycle Bin; ${failed} could not be moved.` : `${deals.length} deal(s) moved to Recycle Bin`, type: failed > 0 ? 'error' : 'success' });
+    } catch (err: any) {
+      showToast({ message: err.message || 'Failed to move selected deals', type: 'error' });
+    }
+  };
+
   const totalResultsCount = currentResults.length;
   const requestedMax = currentRun?.filters.maxDeals ?? 10;
 
@@ -466,6 +483,7 @@ function ResearchDashboard() {
           <LeftRail
             savedDeals={savedDeals}
             selectedDealId={selectedDeal?.id}
+            onBulkRemove={handleBulkRemoveFromMyDeals}
             onSelectDeal={(deal) => {
               loadSavedDealReport(deal);
               setActiveTab('workspace');

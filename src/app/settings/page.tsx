@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/layout/Navigation';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
-import { Settings as SettingsIcon, Save, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Settings as SettingsIcon, Save, RotateCcw, AlertTriangle, Trash2 } from 'lucide-react';
 
 export default function SettingsWrapper() {
   return (
@@ -20,6 +20,9 @@ function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearConfirmation, setClearConfirmation] = useState('');
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings')
@@ -72,6 +75,26 @@ function SettingsPage() {
       showToast({ message: err.message || 'Network error', type: 'error' });
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleClearDemoData = async () => {
+    setIsClearing(true);
+    try {
+      const res = await fetch('/api/settings/clear-demo-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmation: clearConfirmation }) });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast({ message: err.error || 'Failed to clear data', type: 'error' });
+        return;
+      }
+      const result = await res.json();
+      showToast({ message: `Removed ${result.deletedDemoDeals} demo deal(s) and ${result.deletedNotebookNotes} Notebook note(s).`, type: 'success' });
+      setShowClearConfirm(false);
+      setClearConfirmation('');
+    } catch (err: any) {
+      showToast({ message: err.message || 'Network error', type: 'error' });
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -148,6 +171,15 @@ function SettingsPage() {
             </button>
           </div>
         )}
+
+        <div className="bg-white p-6 rounded-2xl border border-rose-200 shadow-sm space-y-3">
+          <h2 className="text-sm font-bold text-slate-900">Clear Demo Data and Notebook</h2>
+          <p className="text-xs text-slate-600 leading-relaxed">Permanently removes fictional demo deals, their reports and source history, plus all Notebook notes. Live research deals are kept. This cannot be undone.</p>
+          <button type="button" onClick={() => setShowClearConfirm(true)} className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors">
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear demo data and Notebook</span>
+          </button>
+        </div>
       </main>
 
       {/* Confirmation Dialog for Reset Demo Data */}
@@ -187,6 +219,25 @@ function SettingsPage() {
               >
                 {isResetting ? 'Resetting...' : 'Confirm Reset'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearConfirm && (
+        <div role="dialog" aria-modal="true" aria-labelledby="clear-demo-title" className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-full bg-rose-50 text-rose-600 shrink-0"><AlertTriangle className="w-5 h-5" /></div>
+              <div className="space-y-1">
+                <h3 id="clear-demo-title" className="text-base font-bold text-slate-900">Clear demo data and all Notebook notes?</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">This permanently removes all fictional demo records and every Notebook note. Live deals remain. Type <strong>CLEAR</strong> to continue.</p>
+              </div>
+            </div>
+            <input value={clearConfirmation} onChange={(event) => setClearConfirmation(event.target.value)} placeholder="Type CLEAR" aria-label="Type CLEAR to confirm" className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-600" />
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button type="button" onClick={() => { setShowClearConfirm(false); setClearConfirmation(''); }} disabled={isClearing} className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">Cancel</button>
+              <button type="button" onClick={handleClearDemoData} disabled={isClearing || clearConfirmation !== 'CLEAR'} className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-md shadow-sm disabled:opacity-50">{isClearing ? 'Clearing...' : 'Permanently clear data'}</button>
             </div>
           </div>
         </div>

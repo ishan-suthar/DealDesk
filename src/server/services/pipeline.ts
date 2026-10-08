@@ -3,7 +3,12 @@ import { getProvider } from '../providers/providerFactory';
 import { sourcesRepository } from '../repositories/sourcesRepository';
 import { dealsRepository } from '../repositories/dealsRepository';
 import { searchRunsRepository } from '../repositories/searchRunsRepository';
-import { canonicalizeUrl, deduplicateSources } from './normalizer';
+import {
+  canonicalizeUrl,
+  deduplicateSources,
+  normalizeDiscoveryPayload,
+  candidateToDeal,
+} from './normalizer';
 import { classifySourceDomain } from './sourceClassifier';
 import { verifyFactValue, isDateWithinWindow } from './verification';
 import { rankDeal } from './ranking';
@@ -68,10 +73,12 @@ export async function runDiscoveryPipeline(params: DiscoveryPipelineParams): Pro
 
   // 2. Extract
   await onProgress('Extracting deal facts', 65);
-  const rawCandidates = (await provider.extract(
+  const rawExtraction = await provider.extract(
     { kind: 'discovery', sourcePack: dedupedSources },
     ctx
-  )) as Deal[];
+  );
+  const dealOrigin = (provider.id === 'demo' || provider.id === 'failing_test') ? 'demo' : 'live';
+  const payload = normalizeDiscoveryPayload(rawExtraction);
 
   // 3. Checking primary sources & Verification
   await onProgress('Checking primary sources', 80);
@@ -80,8 +87,22 @@ export async function runDiscoveryPipeline(params: DiscoveryPipelineParams): Pro
   const verifiedDeals: Deal[] = [];
   const excluded: { reason: string; label: string }[] = [];
 
-  for (const rawDeal of rawCandidates) {
+  for (let idx = 0; idx < payload.candidates.length; idx++) {
     if (signal.aborted) throw new Error('Aborted');
+    const candidate = payload.candidates[idx];
+
+    const rawDeal = candidateToDeal(candidate, {
+      index: idx,
+      filters,
+      sources: dedupedSources,
+      today: todayStr,
+      runId,
+      origin: dealOrigin,
+    });
+
+    if (!rawDeal) {
+      continue; // Discard invalid candidate per contract
+    }
 
     // Rule 6: Check announcement date window
     const annDateVal = rawDeal.announcementDate.value;
@@ -151,8 +172,6 @@ export async function runDiscoveryPipeline(params: DiscoveryPipelineParams): Pro
     // Check if existing deal already exists in database (Deduplication across runs §2.3)
     const existing = await dealsRepository.getByDedupeKey(rawDeal.dedupeKey);
     const userStatus: UserStatus = existing ? existing.userStatus : 'discovered';
-
-    const dealOrigin = (provider.id === 'demo' || provider.id === 'failing_test') ? 'demo' : 'live';
 
     const processedDeal: Deal = {
       ...rawDeal,
