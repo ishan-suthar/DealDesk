@@ -7,8 +7,8 @@
 | **M0** | Plan (no app code) | Done |
 | **M1** | Foundation | Done |
 | **M2** | Welcome, dashboard, discovery, quick preview, Recycle Bin | Done |
-| **M3** | Deep research report | In Progress |
-| **M4** | Notebook and export | Not Started |
+| **M3** | Deep research report | Done |
+| **M4** | Notebook and export | In Progress |
 | **M5** | Live providers (contract tests, recorded responses) | Not Started |
 | **M6** | Hardening and handoff | Not Started |
 
@@ -63,11 +63,39 @@
   - AC7: Recycle bin restore flow (`tests/e2e/ac7_recycle_bin.spec.ts`)
 - Full milestone gate passed: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build`.
 
+### M3 — Deep research report
+- Implemented Section-by-Section Deep Research Pipeline (`src/server/services/deepPipeline.ts`):
+  - Emits section progress updates: Deal Snapshot, Company Overview, Deal Summary & Mechanics, Rationale & Judgment, Sources & Research Gaps.
+  - Generates immutable report versions (`version 1, 2, ...`) preserving historical versions.
+- Implemented Reports API routes:
+  - `GET /api/deals/[id]/reports`: Returns all report versions for a deal.
+  - `POST /api/deals/[id]/reports`: Triggers new deep research job with concurrency check (rejects if already running).
+  - `GET /api/deals/[id]/reports/[version]`: Returns specific historical report version.
+- Implemented Deep Report UI (`src/components/report/DeepReportView.tsx`):
+  - Template order matching `TEMPLATE_MAPPING.md` (Sections 1–5).
+  - Report header (`ReportHeader.tsx`) with deal headline, transaction status, `Refresh research` button, version switcher dropdown, "Last researched {relative time}", and non-blocking refresh progress banner with Cancel button.
+  - Section 1: Snapshot (`SnapshotSection.tsx`) with quick facts table and FactValue citations.
+  - Section 2: Companies (`CompaniesSection.tsx`) with acquirer and target overviews, financial profiles, and products.
+  - Section 3: Mechanics (`MechanicsSection.tsx`) with consideration structure, financing sources, regulatory status, and conditions.
+  - Section 4: Rationale & Judgment (`RationaleSection.tsx`) with strategic rationale, risks, interview angles, and `Analysis — not investment advice` label.
+  - Section 5: Sources & Research Gaps (`SourcesSection.tsx`) with source pack cards and research gaps callout.
+  - Block action menu (`BlockActionMenu.tsx`) with keyboard navigation (`Tab`, `Space`, `Enter`).
+  - Text selection listener preparing for note extraction.
+- Automated tests:
+  - `tests/unit/ac10_factValueIntegrity.test.ts`: AC10 FactValue component renders valueStatus, source citation chips, and handles missing/undisclosed states.
+  - `tests/e2e/ac5_deep_report.spec.ts`: AC5 Deep research report, versioning and refresh flow passing.
+- Full milestone gate passed: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build`.
+
 ---
 
 ## Decisions
 
-1. **Discovery Queue Persistence:**
+1. **Deep Report Versioning:**
+   - Reports are stored immutably with auto-incrementing `version` numbers per deal.
+   - Refreshes run asynchronously via `deepPipeline`, letting the user browse and read prior report versions while a refresh runs in the background.
+2. **FactValue Strict Rendering:**
+   - Enforced value status visibility (`verified`, `single_source`, `unverified`, `not_found`, `not_publicly_disclosed`) directly in DOM structure to satisfy AC10.
+3. **Discovery Queue Persistence:**
    - Queue groups (On hold, Restored, Current results) are calculated dynamically on the server from the latest search run and deals database.
 2. **Dynamic Route Rendering:**
    - Explicitly configured `export const dynamic = 'force-dynamic'` on `/api/search/current` to ensure freshest SQLite state is returned upon every client poll.

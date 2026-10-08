@@ -8,9 +8,10 @@ import { ProgressStage } from '@/components/research/ProgressStage';
 import { DealCard } from '@/components/research/DealCard';
 import { QuickPreview } from '@/components/research/QuickPreview';
 import { LeftRail } from '@/components/research/LeftRail';
+import { DeepReportView } from '@/components/report/DeepReportView';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
-import type { Deal, SearchRun, Job, Company, Source, SearchFilters } from '@/domain/types';
-import { ChevronDown, ChevronUp, AlertCircle, Info, Layers } from 'lucide-react';
+import type { Deal, SearchRun, Job, Company, Source, SearchFilters, ResearchReport } from '@/domain/types';
+import { ChevronDown, ChevronUp, AlertCircle, Layers, ArrowLeft } from 'lucide-react';
 
 export default function ResearchPageWrapper() {
   return (
@@ -23,8 +24,11 @@ export default function ResearchPageWrapper() {
 function ResearchDashboard() {
   const { showToast } = useToast();
 
-  // State
+  // Navigation & tabs
   const [activeTab, setActiveTab] = useState<'myDeals' | 'results' | 'workspace'>('results');
+  const [workspaceMode, setWorkspaceMode] = useState<'preview' | 'report'>('preview');
+
+  // Search run state
   const [currentRun, setCurrentRun] = useState<SearchRun | null>(null);
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -41,7 +45,11 @@ function ResearchDashboard() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [dealCompanies, setDealCompanies] = useState<Company[]>([]);
   const [dealSources, setDealSources] = useState<Source[]>([]);
-  const [isLoadingDealDetails, setIsLoadingDealDetails] = useState(false);
+
+  // Deep Report State
+  const [currentReport, setCurrentReport] = useState<ResearchReport | null>(null);
+  const [allReports, setAllReports] = useState<ResearchReport[]>([]);
+  const [deepJob, setDeepJob] = useState<Job | null>(null);
 
   // System state error / notices
   const [runErrorNotice, setRunErrorNotice] = useState<string | null>(null);
@@ -80,10 +88,10 @@ function ResearchDashboard() {
     refreshQueue();
   }, [refreshQueue]);
 
-  // Load detailed companies and sources when a deal is selected
+  // Load detailed companies and sources when a deal is selected (Preview mode)
   const loadDealDetails = useCallback(async (deal: Deal) => {
     setSelectedDeal(deal);
-    setIsLoadingDealDetails(true);
+    setWorkspaceMode('preview');
     try {
       const res = await fetch(`/api/deals/${deal.id}`);
       if (res.ok) {
@@ -93,8 +101,56 @@ function ResearchDashboard() {
       }
     } catch (err) {
       console.error('Failed to load deal details:', err);
-    } finally {
-      setIsLoadingDealDetails(false);
+    }
+  }, []);
+
+  // Load report when a saved deal is clicked from left rail or Open Research
+  const loadSavedDealReport = useCallback(async (deal: Deal) => {
+    setSelectedDeal(deal);
+    setWorkspaceMode('report');
+    try {
+      // 1. Fetch deal sources
+      const dealRes = await fetch(`/api/deals/${deal.id}`);
+      if (dealRes.ok) {
+        const dealData = await dealRes.json();
+        setDealSources(dealData.sources || []);
+      }
+
+      // 2. Fetch reports for deal
+      const res = await fetch(`/api/deals/${deal.id}/reports`);
+      if (res.ok) {
+        const data = await res.json();
+        const reports: ResearchReport[] = data.reports || [];
+        setAllReports(reports);
+
+        if (data.activeJob) {
+          setDeepJob(data.activeJob);
+        }
+
+        if (reports.length > 0) {
+          setCurrentReport(reports[0]);
+        } else {
+          // If no report exists, auto-start a deep-research job (§3.5)
+          const startRes = await fetch(`/api/deals/${deal.id}/reports`, {
+            method: 'POST',
+          });
+          if (startRes.ok) {
+            const { jobId } = await startRes.json();
+            setDeepJob({
+              id: jobId,
+              kind: 'deep_research',
+              dealId: deal.id,
+              status: 'running',
+              stage: 'Gathering filing and media sources',
+              progress: 20,
+              usage: { searches: 0, fetches: 0, inputTokens: 0, outputTokens: 0 },
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load deal reports:', err);
     }
   }, []);
 
@@ -111,7 +167,7 @@ function ResearchDashboard() {
     }
   }, [currentResults, onHoldDeals, savedDeals, selectedDeal, loadDealDetails]);
 
-  // Polling active job every 1s
+  // Polling active discovery job every 1s
   useEffect(() => {
     if (!activeJob || (activeJob.status !== 'running' && activeJob.status !== 'queued')) {
       return;
@@ -143,6 +199,44 @@ function ResearchDashboard() {
     return () => clearInterval(interval);
   }, [activeJob, refreshQueue]);
 
+  // Polling active deep research job every 1s
+  useEffect(() => {
+    if (!deepJob || (deepJob.status !== 'running' && deepJob.status !== 'queued') || !selectedDeal) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/jobs/${deepJob.id}`);
+        if (res.ok) {
+          const { job } = await res.json();
+          setDeepJob(job);
+
+          if (job.status === 'succeeded') {
+            setDeepJob(null);
+            // Refresh reports
+            const repRes = await fetch(`/api/deals/${selectedDeal.id}/reports`);
+            if (repRes.ok) {
+              const repData = await repRes.json();
+              setAllReports(repData.reports || []);
+              if (repData.reports?.length > 0) {
+                setCurrentReport(repData.reports[0]);
+              }
+            }
+            clearInterval(interval);
+          } else if (job.status === 'failed' || job.status === 'cancelled') {
+            setDeepJob(null);
+            clearInterval(interval);
+          }
+        }
+      } catch (err) {
+        console.error('Deep job polling error:', err);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [deepJob, selectedDeal]);
+
   // Handle Find Deals
   const handleStartSearch = async (filters: SearchFilters) => {
     setIsSearching(true);
@@ -164,7 +258,7 @@ function ResearchDashboard() {
         return;
       }
 
-      const { jobId, runId } = await res.json();
+      const { jobId } = await res.json();
       setActiveJob({
         id: jobId,
         kind: 'discovery',
@@ -234,6 +328,87 @@ function ResearchDashboard() {
     }
   };
 
+  // Trigger Refresh Research on Saved Deal
+  const handleRefreshResearch = async () => {
+    if (!selectedDeal) return;
+    try {
+      const res = await fetch(`/api/deals/${selectedDeal.id}/reports`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const { jobId } = await res.json();
+        setDeepJob({
+          id: jobId,
+          kind: 'deep_research',
+          dealId: selectedDeal.id,
+          status: 'running',
+          stage: 'Gathering filing and media sources',
+          progress: 20,
+          usage: { searches: 0, fetches: 0, inputTokens: 0, outputTokens: 0 },
+          createdAt: new Date().toISOString(),
+        });
+        showToast({ message: 'Deep research refresh initiated', type: 'info' });
+      }
+    } catch (err: any) {
+      showToast({ message: err.message || 'Failed to refresh research', type: 'error' });
+    }
+  };
+
+  const handleCancelDeepJob = async () => {
+    if (!deepJob) return;
+    await fetch(`/api/jobs/${deepJob.id}/cancel`, { method: 'POST' });
+    setDeepJob(null);
+    showToast({ message: 'Deep research cancelled' });
+  };
+
+  const handleSelectReportVersion = async (version: number) => {
+    if (!selectedDeal) return;
+    try {
+      const res = await fetch(`/api/deals/${selectedDeal.id}/reports/${version}`);
+      if (res.ok) {
+        const { report, sources } = await res.json();
+        setCurrentReport(report);
+        setDealSources(sources || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRemoveFromMyDeals = async () => {
+    if (!selectedDeal) return;
+    const dealToRemove = selectedDeal;
+    try {
+      const res = await fetch(`/api/deals/${dealToRemove.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove' }),
+      });
+      if (res.ok) {
+        showToast({
+          message: 'Removed from My Deals',
+          durationMs: 8000,
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              await fetch(`/api/deals/${dealToRemove.id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'restore' }),
+              });
+              await refreshQueue();
+              loadSavedDealReport(dealToRemove);
+            },
+          },
+        });
+        setWorkspaceMode('preview');
+        await refreshQueue();
+      }
+    } catch (err: any) {
+      showToast({ message: err.message || 'Remove failed', type: 'error' });
+    }
+  };
+
   const totalResultsCount = currentResults.length;
   const requestedMax = currentRun?.filters.maxDeals ?? 10;
 
@@ -284,7 +459,7 @@ function ResearchDashboard() {
             savedDeals={savedDeals}
             selectedDealId={selectedDeal?.id}
             onSelectDeal={(deal) => {
-              loadDealDetails(deal);
+              loadSavedDealReport(deal);
               setActiveTab('workspace');
             }}
           />
@@ -453,20 +628,46 @@ function ResearchDashboard() {
           )}
         </div>
 
-        {/* Right Column: Quick Preview / Workspace (4 cols) */}
+        {/* Right Column: Quick Preview / Deep Report Workspace (4 cols) */}
         <div
           className={`lg:col-span-4 lg:block ${
             activeTab === 'workspace' ? 'block' : 'hidden'
           } sticky top-20`}
         >
-          {selectedDeal ? (
+          {workspaceMode === 'report' && selectedDeal && currentReport ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode('preview')}
+                className="text-xs font-bold text-slate-600 hover:text-teal-800 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white border border-slate-200 shadow-xs"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Quick Preview</span>
+              </button>
+
+              <DeepReportView
+                deal={selectedDeal}
+                currentReport={currentReport}
+                allReports={allReports}
+                sources={dealSources}
+                activeJob={deepJob}
+                onSelectVersion={handleSelectReportVersion}
+                onRefresh={handleRefreshResearch}
+                onCancelRefresh={handleCancelDeepJob}
+                onRemoveFromMyDeals={handleRemoveFromMyDeals}
+                onSaveToNotebook={({ quote }) => {
+                  showToast({ message: 'Saved quote to Notebook', type: 'success' });
+                }}
+              />
+            </div>
+          ) : selectedDeal ? (
             <QuickPreview
               deal={selectedDeal}
               companies={dealCompanies}
               sources={dealSources}
               onAction={handleDealAction}
-              onOpenReport={(dealId) => {
-                window.location.href = `/research?dealId=${dealId}#report`;
+              onOpenReport={() => {
+                loadSavedDealReport(selectedDeal);
               }}
             />
           ) : (
